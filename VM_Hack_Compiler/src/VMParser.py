@@ -19,6 +19,7 @@ class Parser:
         self.that = 4
         self.temp = 5
         self.static = 16
+        self.return_addrss=0
 
     def parse(self,lines,file_name):
 
@@ -51,7 +52,7 @@ class Parser:
     def arith_c_translate(self,commad):
         trans = ''
         if(commad == 'add'):
-            trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=M+D'
+            trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=D+M'
         elif(command == 'sub'):
             trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=M-D'
         elif(commad == 'neg'):
@@ -63,22 +64,22 @@ class Parser:
         elif(commad == 'lt'):
             trans ='@SP\nAM=M-1\nD=M\nA=A-1\nD=M-D\n@EXIT\nD;JLT\n@SP\nA=M-1\nM=0'
         elif(commad == 'and'):
-            trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=M&D'
+            trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=D&M'
         elif(commad == 'or'):
-            trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=M|D'
+            trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=D|M'
         else:                                           #Not command
             trans = '@SP\nAM=M-1\nM=!M'
         
         return trans
             
-    def branch_c_translate(self,command,etiq):
+    def branch_c_translate(self,command,etiq,file_name):
         trans = ''
         if(command == 'label'):
-            trans = f"({etiq})"
+            trans = f"({file_name.upper()}.{etiq.upper()})"
         elif(command == 'goto'):
-            trans = f"@{etiq}\n0;JMP"
+            trans = f"@{file_name.upper()}.{etiq.upper())}\n0;JMP"
         else:                                          #if-goto command
-            trans = f"@SP\nAM=M-1\nD=M\@{etiq}\nD;JNE"
+            trans = f"@SP\nAM=M-1\nD=M\n@{file_name.upper()}.{etiq.upper()}\nD;JNE"
 
         return trans
 
@@ -86,22 +87,22 @@ class Parser:
         trans = ''
         if(command == 'push'):
             if(segment=='local'or segment=='argument'or segment=='this' or segment=='that'):
-                trans=f"@{number}\nD=A\n@{self.hack_mem_segments[segment]}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+                trans=f"@{number}\nD=A\n@{self.hack_mem_segments[segment]}\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
             elif(segment=='constant'):
                 trans=f"@{number}\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1"
             elif(segment=='static'):
                 trans=f"@{file_name}.{number}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
             elif(segment=='temp'):
-                trans=f"@{number}\nD=A\n@{self.temp}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+                trans=f"@{number}\nD=A\n@{self.temp}\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
             elif(segment=='pointer'):
                 if(int(number)==0):
-                    trans=f"@{number}\nD=A\n@{self.this}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+                    trans=f"@{number}\nD=A\n@{self.this}\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
                 else:
-                    trans=f"@{number}\nD=A\n@{self.that}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+                    trans=f"@{number}\nD=A\n@{self.that}\nA=D+M\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
 
         else:
             if(segment=='local' or segment=='argument' or segment=='this' or segment=='that'):
-                trans=f"@{number}\nD=A\n@{self.hack_mem_segments[segment]}\nD=M+D\n@value\nM=D\n@SP\nAM=M-1\nD=M\n@value\nM=D"
+                trans=f"@{number}\nD=A\n@{self.hack_mem_segments[segment]}\nD=D+M\n@value\nM=D\n@SP\nAM=M-1\nD=M\n@value\nM=D"
             elif(segment=='static'):
                 trans=f"@SP\nAM=M-1\nD=M\n@{file_name}.{number}\nM=D"
             elif(segment=='temp'):
@@ -124,15 +125,31 @@ class Parser:
         elif (command in self.funct_commands):
             return 4
         
+    def funct_c_translate(self,commad,funct_name,num_args):
 
-
-'''
-    def funct_c_translate(self,commad,segment,num_vars):
-
+        trans = ''
         if(commad=='call'):
             #
+            funct_ref = f"{funct_name.upper()}RETURN{self.return_addrss}"
+            self.return_addrss+=1
+            trans = self.callPushAddrss()+
+                    self.callPushLCL_ARG_THIS_THAT('LCL')+self.callPushLCL_ARG_THIS_THAT('ARG')+
+                    self.callPushLCL_ARG_THIS_THAT('THIS')+self.callPushLCL_ARG_THIS_THAT('THAT')+
+                    self.callSetARG(num_args)+
+                    
+
         elif(command=='function'):
         else:
-'''
+    
+    def callPushAddrss():
+        return 'D=A\n@SP\nA=M\nM=D\@SP\nM=M+1\n'
+    def callPushLCL_ARG_THIS_THAT(segment):
+        return f"@{segment}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"
+    def callSetARG(num_args):
+        steps_back = int(num_args) + 5
+        return f"@SP\nD=M\n@{steps_back}\nD=D-A\n@ARG\nM=D\n"
+    def callSetLCL()
+    
+
 
         
