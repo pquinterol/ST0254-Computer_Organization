@@ -125,31 +125,120 @@ class Parser:
         elif (command in self.funct_commands):
             return 4
         
-    def funct_c_translate(self,commad,funct_name,num_args):
+    def funct_c_translate(self,commad,funct_name,num_args_vars):
 
         trans = ''
         if(commad=='call'):
             #
             funct_ref = f"{funct_name.upper()}RETURN{self.return_addrss}"
             self.return_addrss+=1
-            trans = self.callPushAddrss()+
-                    self.callPushLCL_ARG_THIS_THAT('LCL')+self.callPushLCL_ARG_THIS_THAT('ARG')+
-                    self.callPushLCL_ARG_THIS_THAT('THIS')+self.callPushLCL_ARG_THIS_THAT('THAT')+
-                    self.callSetARG(num_args)+
-                    
+            push_mem_segments=self.callPushLCL_ARG_THIS_THAT('LCL')+self.callPushLCL_ARG_THIS_THAT('ARG')+self.callPushLCL_ARG_THIS_THAT('THIS')+self.callPushLCL_ARG_THIS_THAT('THAT')
+            trans = self.callPushAddrss() + push_mem_segments + self.callSetARG(num_args_vars) + self.callSetLCL() + self.callGotoFunc(funct_name) + self.callReturnAddrss(funct_ref)
+            return trans 
 
         elif(command=='function'):
+            return self.funct_commands(funct_name,num_args_vars)
         else:
+            for i in self.commands_return():
+                trans+=i
+            return trans
+
+    def funct_commands(funct_name,num_vars):
+        trans = f"({funct_name})\n"
+        for i in range(int(num_vars)):
+            trans+=assembly_commands.append('@SP\nA=M\nM=0\n@SP\nM=M+1\n')
+        return trans
     
+    def commands_return():
+
+        commands = []
+        commands.append("@LCL")
+        commands.append("D=M")
+        assembly_commands.append("@R14")
+        assembly_commands.append("M=D")
+        # RET = *(FRAME - 5)
+        commands.append("@R14")
+        commands.append("D=M")
+        commands.append("@5")
+        commands.append("D=D-A")
+        commands.append("A=D")
+        commands.append("D=M")
+        commands.append("@R15")
+        commands.append("M=D")
+        # *ARG = pop()
+        commands.append("@SP")
+        commands.append("AM=M-1")
+        commands.append("D=M")
+        commands.append("@ARG")
+        commands.append("A=M")
+        commands.append("M=D")
+        # SP = ARG + 1
+        commands.append("@ARG")
+        commands.append("D=M")
+        commands.append("@SP")
+        commands.append("M=D+1")
+        # THAT = *(FRAME-1)
+        commands.append("@R14")
+        commands.append("D=M")
+        commands.append("@1")
+        commands.append("D=D-A")
+        commands.append("A=D")
+        commands.append("D=M")
+        commands.append("@THAT")
+        commands.append("M=D")
+        # THIS = *(FRAME-2)
+        commands.append("@R14")
+        commands.append("D=M")
+        commands.append("@2")
+        commands.append("D=D-A")
+        commands.append("A=D")
+        commands.append("D=M")
+        commands.append("@THIS")
+        commands.append("M=D")
+        # ARG = *(FRAME-3)
+        commands.append("@R14")
+        commands.append("D=M")
+        commands.append("@3")
+        commands.append("D=D-A")
+        commands.append("A=D")
+        commands.append("D=M")
+        commands.append("@ARG")
+        commands.append("M=D")
+        # LCL = *(FRAME-4)
+        commands.append("@R14")
+        commands.append("D=M")
+        commands.append("@4")
+        commands.append("D=D-A")
+        commands.append("A=D")
+        commands.append("D=M")
+        commands.append("@LCL")
+        commands.append("M=D")
+        # goto RET
+        commands.append("@R15")
+        commands.append("A=M")
+        commands.append("0;JMP")
+
+        return commands
+    
+
     def callPushAddrss():
         return 'D=A\n@SP\nA=M\nM=D\@SP\nM=M+1\n'
+
     def callPushLCL_ARG_THIS_THAT(segment):
         return f"@{segment}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"
+
     def callSetARG(num_args):
         steps_back = int(num_args) + 5
         return f"@SP\nD=M\n@{steps_back}\nD=D-A\n@ARG\nM=D\n"
-    def callSetLCL()
-    
+
+    def callSetLCL():
+        return '@SP\nD=M\n@LCL\nM=D\n'
+
+    def callGotoFunc(funct_name):
+        return f"@{funct_name}\n0;JMP"
+
+    def callReturnAddrss(funct_ref):
+        return f"@{funct_ref}\n"
 
 
         
