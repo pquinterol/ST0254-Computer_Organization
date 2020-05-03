@@ -35,7 +35,7 @@ class Parser:
                     trans_lines.append(self.arith_c_translate(command))
                 elif(command_type == 2):
                     #branch
-                    trans_lines.append(self.branch_c_translate(command))
+                    trans_lines.append(self.branch_c_translate(command,i[1],file_name))
                 elif(command_type == 3):
                     #push_pop
                     trans_lines.append(self.push_pop_c_translate(command,i[1],i[2],file_name))
@@ -49,23 +49,23 @@ class Parser:
     '''
     Need to add the (EXIT) label
     '''
-    def arith_c_translate(self,commad):
+    def arith_c_translate(self,command):
         trans = ''
-        if(commad == 'add'):
+        if(command == 'add'):
             trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=D+M'
         elif(command == 'sub'):
             trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=M-D'
-        elif(commad == 'neg'):
+        elif(command == 'neg'):
             trans = '@SP\nA=M-1\nM=!M'
-        elif(commad == 'eq'):
+        elif(command == 'eq'):
             trans = '@SP\nAM=M-1\nD=M\nA=A-1\nD=M-D\n@EXIT\nD;JEQ\n@SP\nA=M-1\nM=0'
         elif(command == 'gt'):
             trans = '@SP\nAM=M-1\nD=M\nA=A-1\nD=M-D\n@EXIT\nD;JGT\n@SP\nA=M-1\nM=0'
-        elif(commad == 'lt'):
+        elif(command == 'lt'):
             trans ='@SP\nAM=M-1\nD=M\nA=A-1\nD=M-D\n@EXIT\nD;JLT\n@SP\nA=M-1\nM=0'
-        elif(commad == 'and'):
+        elif(command == 'and'):
             trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=D&M'
-        elif(commad == 'or'):
+        elif(command == 'or'):
             trans = '@SP\nAM=M-1\nD=M\nA=A-1\nM=D|M'
         else:                                           #Not command
             trans = '@SP\nAM=M-1\nM=!M'
@@ -77,7 +77,7 @@ class Parser:
         if(command == 'label'):
             trans = f"({file_name.upper()}.{etiq.upper()})"
         elif(command == 'goto'):
-            trans = f"@{file_name.upper()}.{etiq.upper())}\n0;JMP"
+            trans = f"@{file_name.upper()}.{etiq.upper()}\n0;JMP"
         else:                                          #if-goto command
             trans = f"@SP\nAM=M-1\nD=M\n@{file_name.upper()}.{etiq.upper()}\nD;JNE"
 
@@ -125,10 +125,10 @@ class Parser:
         elif (command in self.funct_commands):
             return 4
         
-    def funct_c_translate(self,commad,funct_name,num_args_vars):
+    def funct_c_translate(self,command,funct_name,num_args_vars):
 
         trans = ''
-        if(commad=='call'):
+        if(command=='call'):
             #
             funct_ref = f"{funct_name.upper()}RETURN{self.return_addrss}"
             self.return_addrss+=1
@@ -137,25 +137,26 @@ class Parser:
             return trans 
 
         elif(command=='function'):
-            return self.funct_commands(funct_name,num_args_vars)
+            return self.funct_trans_commands(funct_name,num_args_vars)
         else:
-            for i in self.commands_return():
-                trans+=i
+            lines = self.return_trans_commands()
+            for i in lines:
+                trans+=i+'\n'
             return trans
 
-    def funct_commands(funct_name,num_vars):
+    def funct_trans_commands(self,funct_name,num_vars):
         trans = f"({funct_name})\n"
         for i in range(int(num_vars)):
             trans+=assembly_commands.append('@SP\nA=M\nM=0\n@SP\nM=M+1\n')
         return trans
     
-    def commands_return():
+    def return_trans_commands(self):
 
         commands = []
         commands.append("@LCL")
         commands.append("D=M")
-        assembly_commands.append("@R14")
-        assembly_commands.append("M=D")
+        commands.append("@R14")
+        commands.append("M=D")
         # RET = *(FRAME - 5)
         commands.append("@R14")
         commands.append("D=M")
@@ -221,23 +222,23 @@ class Parser:
         return commands
     
 
-    def callPushAddrss():
+    def callPushAddrss(self):
         return 'D=A\n@SP\nA=M\nM=D\@SP\nM=M+1\n'
 
-    def callPushLCL_ARG_THIS_THAT(segment):
+    def callPushLCL_ARG_THIS_THAT(self,segment):
         return f"@{segment}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1\n"
 
-    def callSetARG(num_args):
+    def callSetARG(self,num_args):
         steps_back = int(num_args) + 5
         return f"@SP\nD=M\n@{steps_back}\nD=D-A\n@ARG\nM=D\n"
 
-    def callSetLCL():
+    def callSetLCL(self):
         return '@SP\nD=M\n@LCL\nM=D\n'
 
-    def callGotoFunc(funct_name):
+    def callGotoFunc(self,funct_name):
         return f"@{funct_name}\n0;JMP"
 
-    def callReturnAddrss(funct_ref):
+    def callReturnAddrss(self,funct_ref):
         return f"@{funct_ref}\n"
 
 
