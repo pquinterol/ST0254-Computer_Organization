@@ -7,7 +7,8 @@ class Parser:
     branch_commads = ['goto','if-goto','label']
     insert_del_commands = ['push','pop']
     funct_commands = ['function','call','return']
-    mem_segments = {'local':'LCL','argument':'ARG','constant':'CONST','pointer':,'temp','this','that','static'}
+    mem_segments = ['local','argument','constant','pointer','temp','this','that','static']
+    hack_mem_segments = {'local':'LCL','argument':'ARG','this':'THIS','that':'THAT'}
 
     def __init__(self):
         #
@@ -19,7 +20,7 @@ class Parser:
         self.temp = 5
         self.static = 16
 
-    def parse(self,lines):
+    def parse(self,lines,file_name):
 
         trans_lines=[]
 
@@ -30,20 +31,22 @@ class Parser:
                 command_type = self.get_comm_type(command)
                 if(command_type == 1):
                     #arithmetic
-                    trans_lines.append(self.artih_c_translate(command))
+                    trans_lines.append(self.arith_c_translate(command))
                 elif(command_type == 2):
                     #branch
                     trans_lines.append(self.branch_c_translate(command))
                 elif(command_type == 3):
                     #push_pop
+                    trans_lines.append(self.push_pop_c_translate(command,i[1],i[2],file_name))
 
                 else:
                     #funct
                     self.funct_c_translate(command,i[1],i[2])
+        return trans_lines
 
 
     '''
-    Need to add the exit label
+    Need to add the (EXIT) label
     '''
     def arith_c_translate(self,commad):
         trans = ''
@@ -79,23 +82,17 @@ class Parser:
 
         return trans
 
-    def push_pop_c_translate(self,command, segment, number):
+    def push_pop_c_translate(self,command, segment, number,file_name):
         trans = ''
         if(command == 'push'):
-            if(segment=='constant'):
+            if(segment=='local'or segment=='argument'or segment=='this' or segment=='that'):
+                trans=f"@{number}\nD=A\n@{self.hack_mem_segments[segment]}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+            elif(segment=='constant'):
                 trans=f"@{number}\nD=A\n@SP\nA=M\nM=D\n@SP\nM=M+1"
             elif(segment=='static'):
-                trans=f"@{number}\nD=A\n@{self.static}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
+                trans=f"@{file_name}.{number}\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
             elif(segment=='temp'):
                 trans=f"@{number}\nD=A\n@{self.temp}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
-            elif(segment=='local'):
-                trans=f"@{number}\nD=A\n@{self.lcl}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
-            elif(segment=='argument'):
-                trans=f"@{number}\nD=A\n@{self.arg}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
-            elif(segment=='this'):
-                trans=f"@{number}\nD=A\n@{self.this}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
-            elif(segment=='that'):
-                trans=f"@{number}\nD=A\n@{self.that}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
             elif(segment=='pointer'):
                 if(int(number)==0):
                     trans=f"@{number}\nD=A\n@{self.this}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
@@ -103,30 +100,39 @@ class Parser:
                     trans=f"@{number}\nD=A\n@{self.that}\nA=M+D\nD=M\n@SP\nA=M\nM=D\n@SP\nM=M+1"
 
         else:
-            if(segment=='local'):
-                trans=f"@{number}\nD=A\n@{self.lcl}\n@A=M+D\n"
+            if(segment=='local' or segment=='argument' or segment=='this' or segment=='that'):
+                trans=f"@{number}\nD=A\n@{self.hack_mem_segments[segment]}\nD=M+D\n@value\nM=D\n@SP\nAM=M-1\nD=M\n@value\nM=D"
             elif(segment=='static'):
-                trans=f"@{number}\nD=A\n@{self.lcl}\n@A=M+D\n"
-
-
-                
-
-
-
-
-
-    def funct_c_translate(self,commad,segment,num_vars):
-
-
-    def get_comm_type(self,commad):
-        if(i in arith_logic_commads):
+                trans=f"@SP\nAM=M-1\nD=M\n@{file_name}.{number}\nM=D"
+            elif(segment=='temp'):
+                trans=f"@SP\nAM=M-1\nD=M\n@{self.temp+int(number)}\nM=D"
+            elif(segment=='pointer'):
+                if(int(number)==0):
+                    trans=f"@SP\nAM=M-1\nD=M\n@{self.this}\nM=D"
+                else:
+                    trans=f"@SP\nAM=M-1\nD=M\n@{self.that}\nM=D"
+        
+        return trans
+    
+    def get_comm_type(self,command):
+        if(command in self.arith_logic_commads):
             return 1
-        elif(i in branch_commads):
+        elif(command in self.branch_commads):
             return 2
-        elif (i in insert_del_commands):
+        elif (command in self.insert_del_commands):
             return 3
-        elif (i in funct_commands):
+        elif (command in self.funct_commands):
             return 4
         
+
+
+'''
+    def funct_c_translate(self,commad,segment,num_vars):
+
+        if(commad=='call'):
+            #
+        elif(command=='function'):
+        else:
+'''
 
         
