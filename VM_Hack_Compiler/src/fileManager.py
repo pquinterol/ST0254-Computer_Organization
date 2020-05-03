@@ -3,12 +3,12 @@
 class FileManger:
 
     def __init__(self):
-        self.extns = ['vm']
-    
-    def read(path):
+        self.extns = 'vm'
+
+    def read(self,path):
         
         lines = []
-        if(isValidExtension(path)):
+        if(self.isValidExtension(path)):
             try:
                 file = open(path, 'r')
                 for i in file.readlines():
@@ -20,10 +20,11 @@ class FileManger:
                 print('Error:',e)
         else:
             print("Invalid file extension\n","Note: Files must have .vm extension")
+            exit(1)
 
         return lines
 
-    def write(path,lines):
+    def write(self,path,lines):
         try:
             name = path.split('.vm')
             name = name[0]+'.asm'
@@ -32,14 +33,12 @@ class FileManger:
         except Exception as e:
             print('Error:',e)
 
-
     def isValidExtension(self,path):
 
-        try:
-            extension = path.split('.')[-1]
-            self.extns.index(extension)
+        extension = path.split('.')[-1]
+        if(extension.find(self.extns)!=-1):
             return True
-        except Exception:
+        else:
             return False
 
 
